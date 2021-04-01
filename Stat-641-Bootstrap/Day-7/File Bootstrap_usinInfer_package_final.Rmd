@@ -1,0 +1,255 @@
+
+---
+title: "Bootstrap using Infer package"
+author: "Rigoberto Leyva, Xiaodan Chen, Yijie Ying"
+date: "2/10/2021"
+output:
+  beamer_presentation:
+    theme: "CambridgeUS"
+    colortheme: "dolphin"
+    fonttheme: "structurebold"
+
+---
+
+
+## What is the infer package?
+
+-   Package to perform statistical inference based on tidyverse design.
+
+-   Four main verbs:
+
+    -   \textbf{\textsl{specify()}} specifies the y variable or a model with y (response) and x (explanatory) variables.
+
+    -   \textbf{\textsl{hypothesize()}} declare the null hypothesis.
+
+    -   \textbf{\textsl{generate()}} generate data.
+
+    -   \textbf{\textsl{calculate()}} calculates a distribution of statistics from the data.
+
+## Specify() use
+
+\begin{center}
+
+  \textcolor{purple}{\textbf{\textsl{specify(x, formula, response = NULL, explanatory = NULL, \\
+                          success = NULL)}}}
+
+\end{center}
+
+-   Specifying the y variable:
+
+    -   Gestation_sample %\>%\
+        specify(response = gestation) or specify(response = gestation, explanatory = age)
+
+-   To specify a formula such as regression.
+
+    -   Gestation_sample %\>%\
+        specify(formula = gestation \~ age)
+
+## Hypothesize() use
+
+\begin{center}
+
+  \textcolor{purple}{\textbf{\textsl{hypothesize(x, null, p = NULL, mu = NULL, med = NULL, \\ 
+  sigma = NULL)}}}
+
+\end{center}
+
+-   Setting null hypothesis $H_o: \mu = 250$:
+
+    -   Gestation_sample %\>%\
+        specify(response = gestation) %\>%\
+        hypothesize(null = "point", mu = 25)
+
+## Generate() use
+
+\begin{center}
+  
+  \textcolor{purple}{\textbf{\textsl{generate(x, reps = 1, type = NULL, ...)}}}
+
+\end{center}
+
+-   Generate 200 bootstrap samples:
+
+    -   Gestation_sample %\>%\
+        specify(response = gestation) %\>%\
+        hypothesize(null = "point", mu = 250) %\>%\
+        generate(reps = 200, type = "bootstrap")
+
+## Calculate() use
+
+\begin{center}
+
+  \textcolor{purple}{\textbf{\textsl{calculate(x,
+      stat = c("mean", "median", "sum", "sd", "prop", "count", 
+               "diff in means", "diff in medians", "diff in props", 
+               "Chisq", "F", "slope", "correlation", "t", "z", 
+               "ratio of props", "odds ratio"),
+      order = NULL,
+      ...
+    )}}}
+    
+\end{center}
+
+-   Calculate summary statistic for the mean.
+
+    -   Gestation_sample %\>%\
+        specify(response = gestation) %\>%\
+        hypothesize(null = "point", mu = 250) %\>%\
+        generate(reps = 200, type = "bootstrap") %\>%\
+        calculate(stat = "mean")
+
+## Reference & Example 
+
+\textcolor{purple}{\textbf{Reference:}}
+
+• Ismay, Kim, \textbf{ModernDive}    
+\textsl{(https://moderndive.com/index.html)}    
+• Baumer, Kaplan, Horton, \textbf{Modern Data Science with R}, 2nd edition  \textsl{(https://mdsr-book.github.io/mdsr2e/index.html)}
+
+
+\textcolor{purple}{\textbf{Example:}}
+
+Calculate and interpret a 95% confidence interval for the mean age of mothers from the Gestation data set from the mosaicData package.
+
+```{r}
+library(pacman)
+p_load(infer, mosaicData, tidyverse)
+```
+
+## Data Set Structure
+
+```{r, echo = FALSE}
+Gestation <- Gestation %>% filter(!is.na(age))
+```
+
+
+\tiny   
+```{r cars, echo = TRUE}
+glimpse(Gestation)
+```
+
+## **Specify()** - Select Variable
+
+\small 
+```{r,message=FALSE}
+Gestation %>%
+  specify(response = age)
+```
+
+## **Generate()** - Draw Bootstrap Samples
+
+\small 
+```{r}
+Gestation %>%
+  specify(response = age) %>%
+  generate(reps = 100, type = 'bootstrap')
+```
+
+## **Calculate()** - Evaluate Bootstrap Replications
+
+\small 
+```{r}
+Gestation %>%
+  specify(response = age) %>%
+  generate(reps = 100, type = 'bootstrap') %>%
+  calculate(stat = 'mean') 
+```
+
+## **Visualize()** - Visualize the Bootstrap Distribution
+
+\small 
+```{r out.width = '60%', fig.align = "center"}
+bootstrap_distribution <- Gestation %>%
+  specify(response = age) %>%
+  generate(reps = 100, type = 'bootstrap') %>%
+  calculate(stat = 'mean') 
+visualize(bootstrap_distribution)
+```
+
+
+## Get_confidence_interval() / get_ci() use
+
+\begin{center}
+
+  \textcolor{purple}{\textbf{\textsl{get\_confidence\_interval(x, level = 0.95, 
+                         type = "percentile", point\_estimate = NULL)}}}
+    
+\end{center}
+
+
+-   \footnotesize x : data frame of calculated statistics 
+    
+-   level : 0 to 1 ; default value is 0.95
+
+-   type : method for creating the confidence interval
+
+-   point_estimate : needed if type is "se" or "bias-corrected"
+
+
+## 95% Confidence Intervals - Standard Error Method
+
+$$\big(\bar x - 1.96\cdot se(\bar x), \bar x + 1.96\cdot se(\bar x)\big)$$
+
+\small 
+```{r,message=FALSE}
+x_bar <- bootstrap_distribution %>% 
+  summarise(x_bar <- mean(stat))
+standard_error_ci <- bootstrap_distribution %>%
+  get_confidence_interval(type = 'se', point_estimate = x_bar, 
+                          level = 0.95)
+
+standard_error_ci
+```
+
+## 95% Confidence Intervals - Standard Error Method
+
+\small 
+```{r out.width = '75%', fig.align = "center"}
+visualize(bootstrap_distribution) +
+  shade_confidence_interval(endpoints = standard_error_ci)
+```
+
+## 95% Confidence Intervals - Percentile Method
+
+\small 
+```{r}
+percentile_ci <- bootstrap_distribution %>%
+  get_confidence_interval(level = 0.95, type = 'percentile')
+percentile_ci
+```
+
+## 95% Confidence Intervals - Percentile Method
+
+\small 
+```{r out.width = '70%', fig.align = "center"}
+visualize(bootstrap_distribution) +
+  shade_confidence_interval(endpoints = percentile_ci, 
+                          color = 'lightblue', fill = 'lightblue')
+```
+
+## Reference
+
+• Ismay, Kim, ModernDive    
+
+\textsl{(https://moderndive.com/index.html)}    
+
+• Baumer, Kaplan, Horton, Modern Data Science with R, 2nd edition  
+
+\textsl{(https://mdsr-book.github.io/mdsr2e/index.html)}
+
+• infer R Package
+
+\textsl{https://infer.netlify.app/index.html}
+
+• Package ‘infer’
+
+\textsl{https://cran.r-project.org/web/packages/infer/infer.pdf}
+
+
+
+
+
+
+
+
+
