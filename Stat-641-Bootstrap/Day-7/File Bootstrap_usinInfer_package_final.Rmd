@@ -1,7 +1,6 @@
 
 ---
 title: "Bootstrap using Infer package"
-author: "Rigoberto Leyva, Xiaodan Chen, Yijie Ying"
 date: "2/10/2021"
 output:
   beamer_presentation:
